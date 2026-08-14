@@ -1,0 +1,25 @@
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+env/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
