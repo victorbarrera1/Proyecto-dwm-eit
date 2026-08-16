@@ -1,6 +1,6 @@
 import type {
   AdminStats,
-  AdminUserDetail,
+  AdminUserRecord,
   AuthSession,
   Crop,
   CropInput,
@@ -10,6 +10,7 @@ import type {
   Paginated,
   Sensor,
   SensorInput,
+  SensorUpdateInput,
   SensorReading,
   User
 } from '../types';
@@ -139,7 +140,7 @@ export const api = {
       paginated<Sensor>(`/sensors${queryString(params)}`, { signal }),
     get: (id: string, signal?: AbortSignal) => request<Sensor>(`/sensors/${id}`, { signal }),
     create: (values: SensorInput) => request<Sensor>('/sensors', { method: 'POST', body: values }),
-    update: (id: string, values: Partial<SensorInput>) =>
+    update: (id: string, values: Partial<SensorUpdateInput>) =>
       request<Sensor>(`/sensors/${id}`, { method: 'PATCH', body: values }),
     remove: (id: string) => request<void>(`/sensors/${id}`, { method: 'DELETE' }),
     readings: async (
@@ -151,8 +152,8 @@ export const api = {
   admin: {
     stats: (signal?: AbortSignal) => request<AdminStats>('/admin/stats', { signal }),
     users: (params: { q?: string; page?: number; limit?: number }, signal?: AbortSignal) =>
-      paginated<User>(`/admin/users${queryString(params)}`, { signal }),
-    user: (id: string, signal?: AbortSignal) => request<AdminUserDetail>(`/admin/users/${id}`, { signal }),
+      paginated<AdminUserRecord>(`/admin/users${queryString(params)}`, { signal }),
+    user: (id: string, signal?: AbortSignal) => request<AdminUserRecord>(`/admin/users/${id}`, { signal }),
     resources: <T>(
       id: string,
       params: { type: 'crops' | 'sensors' | 'readings'; page?: number; limit?: number; from?: string; to?: string },

@@ -11,7 +11,7 @@ import { api, ApiError, getErrorMessage } from '../lib/api';
 import type { AuthSession } from '../types';
 
 const greenhouseSchema = z.object({
-  name: z.string().trim().min(2, 'Ingresa al menos 2 caracteres.').max(100, 'Usa un nombre más breve.'),
+  name: z.string().trim().min(2, 'Ingresa al menos 2 caracteres.').max(80, 'Usa un nombre más breve.'),
   location: z.string().trim().max(160, 'Usa una ubicación más breve.').optional()
 });
 

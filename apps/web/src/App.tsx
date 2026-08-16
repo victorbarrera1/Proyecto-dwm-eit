@@ -1,15 +1,23 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { ArrowLeft, Home, LockKeyhole, Sprout } from 'lucide-react';
 import { AppShell } from './components/AppShell';
 import { LoadingState } from './components/PageStates';
 import { useAuth } from './context/AuthContext';
-import { LoginPage, RegisterPage } from './pages/AuthPages';
-import { DashboardPage } from './pages/DashboardPage';
-import { CropFormPage, CropsPage } from './pages/CropsPages';
-import { SensorDetailPage, SensorFormPage, SensorsPage } from './pages/SensorsPages';
-import { HistoryPage } from './pages/HistoryPage';
-import { AccountPage } from './pages/AccountPage';
-import { AdminDashboardPage, AdminUserDetailPage, AdminUsersPage } from './pages/AdminPages';
+
+const LoginPage = lazy(() => import('./pages/AuthPages').then((module) => ({ default: module.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/AuthPages').then((module) => ({ default: module.RegisterPage })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const CropsPage = lazy(() => import('./pages/CropsPages').then((module) => ({ default: module.CropsPage })));
+const CropFormPage = lazy(() => import('./pages/CropsPages').then((module) => ({ default: module.CropFormPage })));
+const SensorsPage = lazy(() => import('./pages/SensorsPages').then((module) => ({ default: module.SensorsPage })));
+const SensorDetailPage = lazy(() => import('./pages/SensorsPages').then((module) => ({ default: module.SensorDetailPage })));
+const SensorFormPage = lazy(() => import('./pages/SensorsPages').then((module) => ({ default: module.SensorFormPage })));
+const HistoryPage = lazy(() => import('./pages/HistoryPage').then((module) => ({ default: module.HistoryPage })));
+const AccountPage = lazy(() => import('./pages/AccountPage').then((module) => ({ default: module.AccountPage })));
+const AdminDashboardPage = lazy(() => import('./pages/AdminPages').then((module) => ({ default: module.AdminDashboardPage })));
+const AdminUsersPage = lazy(() => import('./pages/AdminPages').then((module) => ({ default: module.AdminUsersPage })));
+const AdminUserDetailPage = lazy(() => import('./pages/AdminPages').then((module) => ({ default: module.AdminUserDetailPage })));
 
 function ProtectedRoute() {
   const { session, isLoading } = useAuth();
@@ -58,7 +66,8 @@ function NotFoundPage() {
 
 export default function App() {
   return (
-    <Routes>
+    <Suspense fallback={<div className="full-page-state"><LoadingState label="Preparando la vista…" /></div>}>
+      <Routes>
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -84,6 +93,7 @@ export default function App() {
       </Route>
       <Route path="/" element={<Navigate to="/app" replace />} />
       <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }

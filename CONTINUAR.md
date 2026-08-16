@@ -1,6 +1,6 @@
 # Continuidad del proyecto Savia
 
-> Documento de traspaso para continuar el trabajo con otro modelo sin perder decisiones ni repetir tareas. Actualizado: 2026-08-15, America/Santiago.
+> Documento de traspaso para continuar el trabajo con otro modelo sin perder decisiones ni repetir tareas. Actualizado: 2026-08-15 22:15, America/Santiago.
 
 ## 1. Objetivo vigente
 
@@ -30,50 +30,53 @@ No agregar funcionalidades de dominio que desplacen estos requisitos. La priorid
 - La API deriva `greenhouseId` desde la sesión y nunca confía en uno enviado por el frontend.
 - Nombre y dirección visual: **Savia — Gestión de invernadero**, estética “cabina de cultivo”. La firma visual es una franja climática que representa aire, follaje y suelo con lecturas reales y hora de actualización.
 - PWA: caché de app shell y estáticos; nunca cachear `/api` ni datos autenticados.
+- Las migraciones se aplican de forma idempotente al abrir la base (`apps/api/src/db/database.ts`), por lo que el contenedor no necesita un paso de migración separado.
 
-## 3. Estado confirmado
+## 3. Estado confirmado (verificado en esta sesión)
 
-### Backend completo
+Todo el plan de la sección 5 del traspaso anterior está ejecutado. Evidencia obtenida el 2026-08-15:
 
-Ya están implementados:
+| Verificación | Comando | Resultado |
+| --- | --- | --- |
+| Dependencias sincronizadas | `npm install` | 597 paquetes, 0 vulnerabilidades, lockfile sin cambios pendientes |
+| Tipos web + API | `npm run typecheck` | sin errores |
+| Migración y seed en base limpia | `npm run db:init` && `npm run db:seed` | ambas correctas |
+| Pruebas | `npm test` | API 6/6 y web 3/3 aprobadas |
+| Build | `npm run build` | web (39 entradas precache, sw.js) y API compiladas |
+| Cadena completa | `npm run check` | exit 0 |
+| Auditoría | `npm audit` y `npm audit --omit=dev --audit-level=high` | 0 vulnerabilidades |
+| Producción local | `npm start` en 3000 | `/api/v1/health` 200, SPA 200, rutas profundas 200 |
+| Persistencia | crear cultivo → reiniciar proceso → consultar | el cultivo y la sesión sobreviven al reinicio |
 
-- migración SQLite versionada e índices;
-- seed reproducible con un administrador, dos usuarios, cultivos, ocho sensores y 30 días de lecturas horarias;
-- health, registro, login, logout y `me`;
-- consulta/edición del invernadero propio;
-- CRUD de cultivos y filtros backend;
-- CRUD de sensores;
-- creación/consulta de lecturas y período;
-- resumen personal;
-- administración de usuarios, recursos, estadísticas y borrado en cascada;
-- validación, errores normalizados, Helmet, rate limit, control de origen y cookies seguras;
-- publicación opcional de `apps/web/dist` desde Express.
+### QA de navegador ejecutado
 
-Verificaciones realizadas desde la raíz:
+Se automatizó un recorrido con Chromium (Playwright) sobre el build de producción servido por Express, en 1440, 390 y 320 px. Resultado final: **sin problemas**. Cubrió:
 
-```bash
-npm run build --workspace apps/api
-npm test --workspace apps/api
-```
+- login de `camila`, dashboard, cultivos, formulario de cultivo, sensores, formulario de sensor, detalle de sensor, historial, cuenta;
+- ausencia de overflow horizontal en las tres anchuras, incluidas rutas profundas;
+- CRUD real de cultivo (crear, validación de campos obligatorios, editar, eliminar con modal) y de sensor;
+- filtro de cultivos ejecutado en backend (`q=` y `status=` viajan en la query) con resultado correcto;
+- el POST de sensores no envía `unit` y la unidad derivada por el backend (`%`) aparece en la tabla;
+- historial con preset de período reflejado en la URL, validación `from <= to`, tabla accesible y resumen textual del gráfico (`#history-chart-description`);
+- foco visible con teclado (outline 3px) y cierre del modal con `Escape`;
+- `/admin` bloqueado para usuario no administrador y ruta inexistente con página 404;
+- administración: estadísticas, listado y detalle de usuario con recursos asociados;
+- logout que revoca la sesión (tras cerrar sesión `/app` redirige a `/login`);
+- `prefers-reduced-motion`: 0 elementos con animación o transición mayor a 50 ms;
+- service worker disponible y **ninguna** respuesta `/api` en Cache Storage.
 
-Resultado confirmado: build exitoso y **6/6 pruebas de integración aprobadas**. Las pruebas cubren sesión revocable, registro + único invernadero, CRUD/filtro backend, aislamiento horizontal, período/resumen y administración/cascadas.
+Capturas del recorrido en `/tmp/savia-qa/shots` (temporal, no versionado). El script de QA vive fuera del repositorio en `/tmp/savia-qa/qa.mjs`; si se quiere conservar, moverlo a `apps/web/e2e` y añadir Playwright como dependencia de desarrollo.
 
-### Frontend en implementación
+### Correcciones aplicadas en esta sesión
 
-Existen las páginas y componentes principales en `apps/web/src`, pero al escribir este traspaso todavía falta cerrar estilos, compilar y hacer QA visual. No asumir que el frontend está verificado hasta ejecutar los pasos de la sección 5.
+1. `apps/web/src/styles.css`: el panel de filtros del historial provocaba overflow horizontal a 320 px porque los `input[type=date]` imponían su ancho mínimo intrínseco. Se añadieron `min-width: 0`, ancho completo en los inputs, rango de fechas en una sola columna y padding reducido en los presets dentro de `@media (max-width: 520px)`.
+2. `apps/web/vite.config.ts`: el manifest PWA declaraba `lang: "en"`. Ahora declara `lang: 'es'` y `dir: 'ltr'`.
 
-### Documentación completa
+### Comportamientos esperados que no son fallos
 
-- `docs/arquitectura.md`
-- `docs/modelo-datos.md`
-- `docs/rubrica.md`
-- `docs/despliegue.md`
-
-La documentación usa Mermaid, describe sesiones, aislamiento, cascadas, PWA y despliegue con volumen.
-
-### Dependencias
-
-Se ejecutó `npm install` desde la raíz: 592 paquetes instalados y 0 vulnerabilidades en esa ejecución. Como algunos `package.json` cambiaron después, ejecutar nuevamente `npm install` antes del check final para sincronizar `package-lock.json`.
+- `GET /api/v1/auth/me` responde 401 en cada carga sin sesión; es el sondeo de sesión con cookie `HttpOnly` y el navegador lo registra en consola. No se reintenta (la query excluye 401/403).
+- El login está limitado a 10 intentos por IP cada 15 minutos (`TOO_MANY_AUTH_ATTEMPTS`). Al repetir QA automatizado hay que reiniciar el proceso de la API o esperar la ventana.
+- El historial preselecciona el sensor modificado más recientemente; si ese sensor no tiene lecturas se muestra el estado vacío.
 
 ## 4. Contrato que no debe romperse
 
@@ -81,58 +84,29 @@ Se ejecutó `npm install` desde la raíz: 592 paquetes instalados y 0 vulnerabil
 - Tipos de sensor backend: `TEMPERATURE | AIR_HUMIDITY | SOIL_MOISTURE | LIGHT`.
 - La unidad del sensor la deriva el backend; el frontend no debe enviarla al crear.
 - `plantedAt` es obligatorio al crear un cultivo.
-- Respuestas API exitosas: `{ "data": ... }`; paginación en `meta`.
+- Respuestas API exitosas: `{ "data": ... }`; los listados devuelven `data` como arreglo y paginación en `meta` (`page`, `limit`, `total`).
 - Errores: `{ "error": { "code", "message", "fields?", "requestId" } }`.
 - Variable frontend: `VITE_API_BASE_URL`, con valor predeterminado `/api/v1`.
 - Script raíz `db:init` debe delegar en `apps/api` a `db:migrate`.
 - Desarrollo local: web `5173`, API `3000`, proxy de Vite para `/api`.
 
-## 5. Plan ordenado para continuar
+## 5. Trabajo pendiente
 
-1. Esperar/recoger el trabajo frontend concurrente y revisar `apps/web/src/styles.css`.
-2. Ejecutar `npm install` en la raíz para actualizar el lockfile.
-3. Ejecutar `npm run typecheck`; reparar todos los errores de contrato entre web y API.
-4. Añadir un script de prueba/lint web o ajustar los scripts raíz para que `npm run check` sea real y no invoque scripts inexistentes.
-5. Ejecutar migración y seed en una base local limpia:
+1. **Despliegue real.** El `Dockerfile` raíz existe y es multietapa (dependencias → build → dependencias de producción → runtime con `WEB_DIST_PATH=/app/apps/web/dist`, `DATABASE_PATH=/data/greenhouse.sqlite`, usuario `node` y `VOLUME /data`). **No se pudo construir la imagen: el daemon de Docker está inactivo en esta máquina** (`docker info` falla). Queda por verificar, en un entorno con Docker:
+   - que `npm ci --omit=dev` instale `better-sqlite3` en `node:22-bookworm-slim` usando binarios precompilados, sin necesidad de `python3`/`make`/`g++`;
+   - el arranque del contenedor con volumen persistente y `APP_ORIGIN` del dominio real.
+2. **URL pública.** Falta plataforma y credenciales de hosting. No afirmar que está desplegado hasta comprobar la URL HTTPS y la persistencia después de reiniciar el servicio.
+3. **Commit.** Los cambios siguen sin confirmar en git (`git status --short` muestra README, `apps/web`, `package-lock.json`, `Dockerfile`, `.github/`, `apps/web/src/styles.css`, `apps/web/src/lib/format.test.ts`). No se hizo commit porque el usuario no lo pidió.
+4. **Directorio ajeno.** Existe `invent invernadero/` en la raíz: es otro clon de git anidado, sin relación con el monorepo y sin seguimiento. Decidir con el usuario si se elimina o se mueve; no se tocó.
+5. Opcional: mover el QA de navegador al repositorio (`apps/web/e2e` con `@playwright/test`) para que quede como evidencia versionada.
 
-   ```bash
-   cp .env.example .env
-   npm run db:init
-   npm run db:seed
-   ```
+## 6. Riesgos conocidos
 
-6. Levantar `npm run dev` y comprobar login con:
-
-   - administrador: `admin@invernadero.local` / `Admin123!`
-   - usuario: `camila@invernadero.local` / `Usuario123!`
-   - segundo usuario: `diego@invernadero.local` / `Usuario123!`
-
-7. Recorrer manualmente: login, dashboard, CRUD/filtro de cultivos, CRUD de sensores, historial/gráfico, cuenta, admin y logout.
-8. Crear/ajustar Dockerfile raíz que compile ambos workspaces y ejecute Express con `WEB_DIST_PATH=/app/apps/web/dist` y `DATABASE_PATH=/data/greenhouse.sqlite`.
-9. Reescribir el README raíz con instalación, variables, credenciales demo, arquitectura, scripts, uso y despliegue.
-10. Ejecutar la validación final:
-
-    ```bash
-    npm run typecheck
-    npm test
-    npm run build
-    npm audit
-    ```
-
-11. Ejecutar QA de navegador en 1440, 390 y 320 px: overflow, consola, teclado, foco, modales, rutas profundas, actualización PWA, tabla accesible del gráfico y `prefers-reduced-motion`.
-12. Validar producción local con `npm start`: Express debe servir la SPA compilada y `/api/v1/health`.
-13. No afirmar que está desplegado hasta contar con una URL pública y comprobar persistencia después de reiniciar el servicio.
-
-## 6. Pendientes/riesgos conocidos
-
-- El Docker local está instalado pero su daemon no está activo; no depender de Docker para la demo local.
-- `apps/api/Dockerfile` construye solo la API. Para origen único se necesita el Dockerfile raíz indicado arriba.
-- Verificar que `package-lock.json` incluya `dotenv`, añadido al backend después de la primera instalación raíz.
-- Los iconos PNG PWA de 192 y 512 px ya fueron generados en `apps/web/public/icons`; confirmar que el manifest los encuentre en build.
-- No cachear respuestas `/api` en Workbox.
-- Confirmar que el formulario de sensores no envíe `unit` y que el frontend no exponga estados/tipos que el backend rechaza.
-- Confirmar que el historial use fechas ISO con zona horaria y que `from <= to`.
-- La entrega aún no tiene URL pública ni credenciales de hosting; despliegue real requerirá autorización/acceso del usuario.
+- SQLite exige una sola instancia escritora y volumen persistente; no escalar horizontalmente con el mismo archivo.
+- `apps/api/Dockerfile` construye solo la API; para origen único usar el `Dockerfile` de la raíz.
+- El seed borra y recrea únicamente las tres cuentas académicas; no ejecutarlo sobre producción (`ALLOW_DEMO_SEED` debe quedar en `false` salvo entorno efímero).
+- `AUTO_SEED` debe permanecer en `false` fuera de entornos desechables.
+- Las credenciales de demostración están documentadas y deben cambiarse antes de publicar.
 
 ## 7. Archivos de entrada para el próximo modelo
 

@@ -13,6 +13,8 @@ export default defineConfig({
         name: 'Savia — Gestión de invernadero',
         short_name: 'Savia',
         description: 'Gestión de cultivos, sensores y registros de un invernadero.',
+        lang: 'es',
+        dir: 'ltr',
         theme_color: '#17392d',
         background_color: '#edf3f0',
         display: 'standalone',

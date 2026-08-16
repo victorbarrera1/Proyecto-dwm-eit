@@ -16,10 +16,10 @@ import type { Crop, CropInput, CropStatus } from '../types';
 const cropSchema = z
   .object({
     name: z.string().trim().min(2, 'Ingresa al menos 2 caracteres.').max(80, 'Usa un nombre más breve.'),
-    species: z.string().trim().min(2, 'Indica la especie.').max(100, 'Usa un máximo de 100 caracteres.'),
-    variety: z.string().trim().max(100, 'Usa un máximo de 100 caracteres.').optional(),
-    status: z.enum(['PLANNED', 'ACTIVE', 'HARVESTED', 'ARCHIVED']),
-    plantedAt: z.string().optional(),
+    species: z.string().trim().min(2, 'Indica la especie.').max(80, 'Usa un máximo de 80 caracteres.'),
+    variety: z.string().trim().max(80, 'Usa un máximo de 80 caracteres.').optional(),
+    status: z.enum(['PLANNED', 'ACTIVE', 'HARVESTED', 'CANCELLED']),
+    plantedAt: z.string().min(1, 'Indica la fecha de siembra.'),
     expectedHarvestAt: z.string().optional(),
     notes: z.string().trim().max(1000, 'Usa un máximo de 1000 caracteres.').optional()
   })
@@ -68,7 +68,7 @@ export function CropsPage() {
   const setFilter = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value); else next.delete(key);
-    next.delete('page');
+    if (key !== 'page') next.delete('page');
     setSearchParams(next);
   };
 
@@ -233,8 +233,8 @@ export function CropFormPage() {
     const payload: CropInput = {
       ...values,
       variety: values.variety || undefined,
-      plantedAt: values.plantedAt ? new Date(`${values.plantedAt}T12:00:00Z`).toISOString() : undefined,
-      expectedHarvestAt: values.expectedHarvestAt ? new Date(`${values.expectedHarvestAt}T12:00:00Z`).toISOString() : undefined,
+      plantedAt: values.plantedAt,
+      expectedHarvestAt: values.expectedHarvestAt || undefined,
       notes: values.notes || undefined
     };
     try {
@@ -270,7 +270,7 @@ export function CropFormPage() {
         <section className="panel form-card">
           <div className="form-section-heading"><span className="form-section-heading__number">02</span><div><h2>Calendario</h2><p>Fechas de referencia para la temporada.</p></div></div>
           <div className="form-grid form-grid--two">
-            <div className="field"><label htmlFor="planted-at">Fecha de siembra <span className="optional">Opcional</span></label><input id="planted-at" type="date" aria-invalid={Boolean(errors.plantedAt)} {...register('plantedAt')} />{errors.plantedAt && <span className="field-error">{errors.plantedAt.message}</span>}</div>
+            <div className="field"><label htmlFor="planted-at">Fecha de siembra</label><input id="planted-at" type="date" aria-invalid={Boolean(errors.plantedAt)} {...register('plantedAt')} />{errors.plantedAt && <span className="field-error">{errors.plantedAt.message}</span>}</div>
             <div className="field"><label htmlFor="harvest-at">Cosecha estimada <span className="optional">Opcional</span></label><input id="harvest-at" type="date" min={watch('plantedAt') || undefined} aria-invalid={Boolean(errors.expectedHarvestAt)} {...register('expectedHarvestAt')} />{errors.expectedHarvestAt && <span className="field-error">{errors.expectedHarvestAt.message}</span>}</div>
           </div>
         </section>

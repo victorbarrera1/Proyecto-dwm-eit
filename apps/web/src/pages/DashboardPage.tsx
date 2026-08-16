@@ -42,6 +42,10 @@ export function DashboardPage() {
   if (summaryQuery.isError) return <ErrorState message={getErrorMessage(summaryQuery.error)} onRetry={() => summaryQuery.refetch()} />;
 
   const summary = summaryQuery.data;
+  const latestWithValues = summary.latestReadings.filter(
+    (reading): reading is typeof reading & { value: number; recordedAt: string } =>
+      reading.value !== null && reading.recordedAt !== null
+  );
   const sensors = sensorsQuery.data?.items || [];
   const currentSensor = sensors.find((sensor) => sensor.id === sensorId);
   const chartData = (readingQuery.data?.items || []).map((reading) => ({
@@ -78,8 +82,8 @@ export function DashboardPage() {
           </div>
         </div>
         <div className="climate-strip__readings">
-          {summary.latestReadings.length ? (
-            summary.latestReadings.slice(0, 4).map((reading) => (
+          {latestWithValues.length ? (
+            latestWithValues.slice(0, 4).map((reading) => (
               <Link to={`/app/history?sensor=${reading.sensorId}`} className="climate-reading" key={reading.sensorId}>
                 <span>{sensorTypeLabels[reading.type]}</span>
                 <strong>{formatNumber(reading.value)} <small>{reading.unit}</small></strong>
@@ -176,7 +180,10 @@ export function DashboardPage() {
                 <li key={reading.sensorId}>
                   <span className={`sensor-mark sensor-mark--${reading.type.toLowerCase()}`}><ThermometerSun size={17} /></span>
                   <div><strong>{reading.sensorName}</strong><small>{sensorTypeLabels[reading.type]}</small></div>
-                  <div className="reading-list__value"><strong>{formatNumber(reading.value)} {reading.unit}</strong><time dateTime={reading.recordedAt}>{formatDate(reading.recordedAt, true)}</time></div>
+                  <div className="reading-list__value">
+                    <strong>{reading.value === null ? 'Sin registros' : `${formatNumber(reading.value)} ${reading.unit}`}</strong>
+                    {reading.recordedAt && <time dateTime={reading.recordedAt}>{formatDate(reading.recordedAt, true)}</time>}
+                  </div>
                 </li>
               ))}
             </ul>

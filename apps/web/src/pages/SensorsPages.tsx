@@ -16,12 +16,17 @@ import { formatDate, formatNumber, sensorTypeLabels } from '../lib/format';
 import type { Sensor, SensorInput, SensorType } from '../types';
 
 const sensorTypes = Object.entries(sensorTypeLabels) as Array<[SensorType, string]>;
+const sensorUnits: Record<SensorType, string> = {
+  TEMPERATURE: '°C',
+  AIR_HUMIDITY: '%',
+  SOIL_MOISTURE: '%',
+  LIGHT: 'lx'
+};
 
 const sensorSchema = z.object({
-  code: z.string().trim().min(2, 'Ingresa al menos 2 caracteres.').max(50, 'Usa un máximo de 50 caracteres.').regex(/^[A-Za-z0-9_-]+$/, 'Usa letras, números, guiones o guion bajo.'),
+  code: z.string().trim().min(3, 'Ingresa al menos 3 caracteres.').max(40, 'Usa un máximo de 40 caracteres.').regex(/^[A-Za-z0-9_-]+$/, 'Usa letras, números, guiones o guion bajo.'),
   name: z.string().trim().min(2, 'Ingresa al menos 2 caracteres.').max(80, 'Usa un nombre más breve.'),
-  type: z.enum(['TEMPERATURE', 'AIR_HUMIDITY', 'SOIL_MOISTURE', 'LIGHT', 'PH', 'OTHER']),
-  unit: z.string().trim().min(1, 'Indica la unidad.').max(20, 'Usa una unidad más breve.'),
+  type: z.enum(['TEMPERATURE', 'AIR_HUMIDITY', 'SOIL_MOISTURE', 'LIGHT']),
   active: z.boolean()
 });
 
@@ -125,17 +130,19 @@ export function SensorFormPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const sensorQuery = useQuery({ queryKey: ['sensor', sensorId], queryFn: ({ signal }) => api.sensors.get(sensorId!, signal), enabled: editing });
-  const { register, handleSubmit, reset, setError, formState: { errors, isDirty } } = useForm<SensorFormValues>({
+  const { register, handleSubmit, reset, setError, watch, formState: { errors, isDirty } } = useForm<SensorFormValues>({
     resolver: zodResolver(sensorSchema),
-    defaultValues: { code: '', name: '', type: 'TEMPERATURE', unit: '°C', active: true }
+    defaultValues: { code: '', name: '', type: 'TEMPERATURE', active: true }
   });
 
   useEffect(() => {
-    if (sensorQuery.data) reset({ code: sensorQuery.data.code, name: sensorQuery.data.name, type: sensorQuery.data.type, unit: sensorQuery.data.unit, active: sensorQuery.data.active });
+    if (sensorQuery.data) reset({ code: sensorQuery.data.code, name: sensorQuery.data.name, type: sensorQuery.data.type, active: sensorQuery.data.active });
   }, [sensorQuery.data, reset]);
 
   const saveMutation = useMutation({
-    mutationFn: (values: SensorInput) => editing ? api.sensors.update(sensorId!, values) : api.sensors.create(values),
+    mutationFn: (values: SensorInput) => editing
+      ? api.sensors.update(sensorId!, { code: values.code, name: values.name, active: values.active })
+      : api.sensors.create(values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sensors'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -170,8 +177,8 @@ export function SensorFormPage() {
         <section className="panel form-card">
           <div className="form-section-heading"><span className="form-section-heading__number">02</span><div><h2>Medición</h2><p>Tipo de dato y unidad reportada.</p></div></div>
           <div className="form-grid form-grid--two">
-            <div className="field"><label htmlFor="sensor-type">Tipo</label><select id="sensor-type" {...register('type')}>{sensorTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-            <div className="field"><label htmlFor="sensor-unit">Unidad</label><input className="mono" id="sensor-unit" placeholder="Ej. °C, %, lux" aria-invalid={Boolean(errors.unit)} {...register('unit')} />{errors.unit && <span className="field-error">{errors.unit.message}</span>}</div>
+            <div className="field"><label htmlFor="sensor-type">Tipo</label><select id="sensor-type" disabled={editing} {...register('type')}>{sensorTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{editing && <small className="field-help">El tipo se fija al crear el sensor.</small>}</div>
+            <div className="field"><label>Unidad asignada</label><output className="derived-value mono" aria-live="polite">{sensorUnits[watch('type')]}</output><small className="field-help">La API asigna esta unidad según el tipo seleccionado.</small></div>
           </div>
           <label className="switch-field"><input type="checkbox" {...register('active')} /><span className="switch-control" /><span><strong>Sensor activo</strong><small>Los sensores inactivos conservan su historial.</small></span></label>
         </section>

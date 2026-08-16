@@ -6,16 +6,14 @@ export const cropStatusLabels: Record<CropStatus, string> = {
   PLANNED: 'Planificado',
   ACTIVE: 'En cultivo',
   HARVESTED: 'Cosechado',
-  ARCHIVED: 'Archivado'
+  CANCELLED: 'Cancelado'
 };
 
 export const sensorTypeLabels: Record<SensorType, string> = {
   TEMPERATURE: 'Temperatura',
   AIR_HUMIDITY: 'Humedad del aire',
   SOIL_MOISTURE: 'Humedad del suelo',
-  LIGHT: 'Luz',
-  PH: 'pH',
-  OTHER: 'Otro'
+  LIGHT: 'Luz'
 };
 
 export function formatDate(value?: string | null, includeTime = false) {
