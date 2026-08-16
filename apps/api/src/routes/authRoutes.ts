@@ -1,4 +1,4 @@
-import { Router, type CookieOptions } from 'express';
+import { Router, type CookieOptions, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { getConfig } from '../config.js';
 import { parseInput } from '../errors.js';
@@ -14,11 +14,14 @@ const authLimiter = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   skip: () => getConfig().isTest,
-  message: {
-    error: {
-      code: 'TOO_MANY_AUTH_ATTEMPTS',
-      message: 'Demasiados intentos. Intenta nuevamente más tarde.'
-    }
+  handler: (request, response) => {
+    response.status(429).json({
+      error: {
+        code: 'TOO_MANY_AUTH_ATTEMPTS',
+        message: 'Demasiados intentos. Intenta nuevamente más tarde.',
+        requestId: request.requestId
+      }
+    });
   }
 });
 
@@ -47,7 +50,7 @@ authRouter.get('/me', requireAuth, (request, response) => {
 });
 
 function setSessionCookie(
-  response: Parameters<typeof authRouter.post>[1] extends never ? never : any,
+  response: Response,
   token: string,
   expiresAt: string
 ): void {
