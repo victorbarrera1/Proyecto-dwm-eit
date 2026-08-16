@@ -8,18 +8,35 @@ logs/
 
 # Dependencies
 node_modules/
+dist/
+coverage/
+.vite/
 __pycache__/
 *.py[cod]
 .venv/
 env/
 
+# Local database and runtime data
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
 # Environment Variables
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # IDEs & Editors
 .idea/
 .vscode/
 *.swp
 *.swo
+
+# Test and browser artifacts
+playwright-report/
+test-results/
+.cache/
